@@ -1,0 +1,51 @@
+# =========================
+# Backend (Python / FastAPI)
+# =========================
+
+# Security: NEVER commit your environment variables!
+backend/.env
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Database
+# (If you ever export MongoDB dumps to your folder, ignore them)
+*.bson
+*.json.gz
+
+
+# =========================
+# Blockchain (Truffle)
+# =========================
+
+# Compiled Smart Contracts
+# (These should be generated locally using 'truffle compile' to match the local Ganache network)
+blockchain/build/
+
+# Node Modules (In case you add a package.json later for Truffle plugins or a Frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+
+# =========================
+# OS & Editor Files
+# =========================
+
+# VS Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# Mac / Windows system files
+.DS_Store
+Thumbs.db
