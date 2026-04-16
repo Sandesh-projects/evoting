@@ -23,8 +23,18 @@ def get_contract():
 @router.post("/add-candidate", status_code=status.HTTP_201_CREATED)
 def add_candidate(req: CandidateRequest):
     c = get_contract()
+    
     try:
-        # Note: We are now passing the new fields to the blockchain!
+        # 🔧 THE FIX: Proactively check if the election is active before spending gas
+        is_active = c.functions.electionActive().call()
+        if is_active:
+            logger.warning(f"Attempt to add candidate '{req.name}' rejected. Election is currently live.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Cannot add candidates while the election is active. Please stop the election first."
+            )
+
+        # Send the transaction to the blockchain
         tx_hash = c.functions.addCandidate(req.name, req.party_affiliation, req.age).transact({
             "from": ADMIN_ACCOUNT
         })
@@ -35,9 +45,12 @@ def add_candidate(req: CandidateRequest):
             "transaction_hash": tx_hash.hex(),
             "data": req.model_dump() # Returns the validated Pydantic data back to the user
         }
+        
+    except HTTPException:
+        # Pass our custom 400 error through cleanly without getting caught by the generic Exception block
+        raise 
     except Exception as e:
         logger.error(f"Blockchain Transaction Failed: {str(e)}")
-        # We don't expose raw blockchain errors to the user in production
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Failed to add candidate. Verify admin permissions and contract state."
