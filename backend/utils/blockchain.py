@@ -19,7 +19,7 @@ except FileNotFoundError:
     abi = []
 
 # Replace with your newly deployed contract address after migration!
-CONTRACT_ADDRESS = "0xeD728a6821F3be0F07B0Fa7AdB3dEEB8138d46FA"
+CONTRACT_ADDRESS = "0x1B71325759c0e9058ab1ebc47Ac3C944C2551256"
 
 if abi:
     contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=abi)

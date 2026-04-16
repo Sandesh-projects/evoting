@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.0;
+pragma solidity ^0.8.0;
 
 contract Voting {
     // 🔐 Admin
@@ -8,21 +8,23 @@ contract Voting {
     // 🗳️ Election state
     bool public electionActive;
 
-    // 👤 Candidate structure
+    // 👤 Candidate structure (UPDATED: Added party and age)
     struct Candidate {
         uint id;
         string name;
+        string party;
+        uint age;
         uint voteCount;
     }
 
     // 📦 Storage
     mapping(uint => Candidate) public candidates;
-    // FIXED: Track by Aadhaar hash instead of msg.sender (since backend proxy makes all calls)
+    // Track by voter hash instead of msg.sender (since backend proxy makes all calls)
     mapping(string => bool) public hasVoted; 
     uint public candidatesCount;
 
-    // 📡 Events (Useful for transaction receipts)
-    event CandidateAdded(uint id, string name);
+    // 📡 Events (UPDATED: Added party and age to the event logs)
+    event CandidateAdded(uint id, string name, string party, uint age);
     event ElectionStarted();
     event ElectionStopped();
     event VoteCasted(uint candidateId, string voterHash);
@@ -48,11 +50,12 @@ contract Voting {
         admin = msg.sender;
     }
 
-    // ➕ Add Candidate
-    function addCandidate(string memory _name) public onlyAdmin electionStopped {
+    // ➕ Add Candidate (UPDATED: Now accepts party and age parameters)
+    function addCandidate(string memory _name, string memory _party, uint _age) public onlyAdmin electionStopped {
         candidatesCount++;
-        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0);
-        emit CandidateAdded(candidatesCount, _name);
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, _party, _age, 0);
+        
+        emit CandidateAdded(candidatesCount, _name, _party, _age);
     }
 
     // ▶️ Start Election
@@ -68,7 +71,7 @@ contract Voting {
         emit ElectionStopped();
     }
 
-    // 🗳️ Vote Function (Now requires Aadhaar hash)
+    // 🗳️ Vote Function 
     function vote(uint _candidateId, string memory _voterHash) public onlyAdmin electionRunning {
         require(!hasVoted[_voterHash], "User has already voted on the blockchain");
         require(_candidateId > 0 && _candidateId <= candidatesCount, "Invalid candidate ID");
@@ -84,10 +87,11 @@ contract Voting {
         return candidatesCount;
     }
 
-    // 📊 Get Candidate Details
-    function getCandidate(uint _id) public view returns (uint, string memory, uint) {
+    // 📊 Get Candidate Details (UPDATED: Returns the full 5-item tuple for FastAPI)
+    function getCandidate(uint _id) public view returns (uint, string memory, string memory, uint, uint) {
         require(_id > 0 && _id <= candidatesCount, "Invalid candidate ID");
         Candidate memory c = candidates[_id];
-        return (c.id, c.name, c.voteCount);
+        
+        return (c.id, c.name, c.party, c.age, c.voteCount);
     }
 }
