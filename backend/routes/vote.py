@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from database import users_collection
+from database import users_collection, results_collection
 from models import VoteRequest
 from utils.security import hash_aadhaar
 from utils.blockchain import contract, ADMIN_ACCOUNT
@@ -73,56 +73,31 @@ def cast_vote(req: VoteRequest):
             detail="Blockchain rejected the vote. Ensure the election is active and the candidate ID is valid."
         )
     
-@router.get("/results", status_code=status.HTTP_200_OK)
-def get_results():
-    c = get_contract()
-    
+@router.get("/official-results", status_code=status.HTTP_200_OK)
+def get_official_results():
     try:
-        is_active = c.functions.electionActive().call()
+        # Fetch the official published record from MongoDB
+        official_record = results_collection.find_one({"status": "official"})
         
-        if is_active:
-            logger.warning("Attempt to access live results blocked. Election is still ongoing.")
+        if not official_record:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail="The election is currently active. Results remain classified until the admin officially stops the election."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="The official election results have not been published yet."
             )
 
-        results = []
-        count = c.functions.candidatesCount().call()
-
-        for i in range(1, count + 1):
-            candidate = c.functions.candidates(i).call()
-            results.append({
-                "id": candidate[0],
-                "name": candidate[1],
-                "party": candidate[2], 
-                "age": candidate[3],   
-                "votes": candidate[4]  
-            })
-
-        # 🏆 THE NEW FEATURE: Calculate the Winner(s)
-        winners = []
-        if results:
-            # 1. Find the highest vote count among all candidates
-            max_votes = max(candidate["votes"] for candidate in results)
-            
-            # 2. Only declare a winner if at least one vote was cast
-            if max_votes > 0:
-                # 3. Find everyone who has that max score (This gracefully handles ties!)
-                winners = [candidate for candidate in results if candidate["votes"] == max_votes]
+        # Remove the MongoDB internal ID before sending to the user
+        official_record.pop("_id", None)
 
         return {
-            "status": "success",
-            "total_candidates": count,
-            "winners": winners,  # The new key is added here!
-            "results": results
+            "message": "Official archived election results retrieved from database.",
+            "data": official_record
         }
-        
+
     except HTTPException:
-        raise 
+        raise
     except Exception as e:
-        logger.error(f"Failed to fetch results from blockchain: {str(e)}")
+        logger.error(f"Database error while fetching official results: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Failed to retrieve election data from the blockchain ledger."
+            detail="Database error while fetching official results."
         )
